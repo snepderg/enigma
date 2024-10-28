@@ -1,0 +1,53 @@
+--@name Enigma: Plugboard
+--@author Snep, Superlamaface
+
+--@shared
+
+local Plugboard = class( "Plugboard" )
+
+function Plugboard:initialize( plugPairs )
+    self.key = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    self.wiring = ""
+    self.lookup = {}
+    self:setPairs( plugPairs )
+end
+
+function Plugboard:setPairs( plugPairs )
+    self.wiring = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    self.lookup = {}
+
+    for _, v in pairs( plugPairs ) do
+        local pair1 = v[1]
+        local pair2 = v[2]
+
+        self:swap( pair1, pair2 )
+    end
+end
+
+function Plugboard:input( char )
+    if type( char ) == "string" then
+        local pos = string.find( self.key, char )
+        return self.wiring[pos]
+    else
+        return self.wiring[char]
+    end
+end
+
+function Plugboard:swap( pair1, pair2 )
+    if not table.hasValue( self.lookup, pair1 ) and not table.hasValue( self.lookup, pair2 ) then
+        table.insert( self.lookup, pair1 )
+        table.insert( self.lookup, pair2 )
+
+        local wiringPos1 = string.find( self.wiring, pair1 )
+        local wiringPos2 = string.find( self.wiring, pair2 )
+
+        local charPos1 = self.wiring[wiringPos1]
+        local charPos2 = self.wiring[wiringPos2]
+
+        self.wiring = string.setChar( self.wiring, wiringPos1, charPos2 )
+        self.wiring = string.setChar( self.wiring, wiringPos2, charPos1 )
+    end
+end
+
+return Plugboard

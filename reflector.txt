@@ -1,0 +1,28 @@
+--@name Enigma: Reflector
+--@author Snep, Superlamaface
+
+--@shared
+
+local Reflector = class( "Reflector" )
+
+function Reflector:initialize( wiring ) -- Make sure pairs are immutable after swapping
+    self.key = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    self.wiring = ""
+    self:setWiring( wiring )
+end
+
+function Reflector:input( char )
+    if type( char ) == "string" then
+        local pos = string.find( self.key, char )
+        return self.wiring[pos]
+    else
+        return self.wiring[char]
+    end
+end
+
+function Reflector:setWiring( wiring )
+    self.wiring = wiring
+end
+
+return Reflector

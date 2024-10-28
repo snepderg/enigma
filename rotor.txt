@@ -1,0 +1,83 @@
+--@name Enigma: Rotor
+--@author Snep, Superlamaface
+
+--@shared
+
+local Rotor = class( "Rotor" )
+
+function Rotor:initialize( wiring, notches )
+    self.key = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    self.nextRotor = nil
+
+    self.alphabet = ""
+    self.wiring = ""
+    self:setWiring( wiring )
+
+    self.notches = {}
+    self:setNotches( notches or {} )
+end
+
+function Rotor:setWiring( wiring )
+    self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" -- left/forward
+    self.wiring = wiring -- right/backward
+end
+
+function Rotor:setNotches( notches )
+    self.notches = {}
+
+    for i, v in pairs( notches ) do
+        local alphabetIndex = string.find( self.key, v )
+        table.insert( self.notches, self.wiring[alphabetIndex] )
+    end
+end
+
+function Rotor:turn()
+    if self.nextRotor and table.hasValue( self.notches, self.wiring[1] ) then
+        self.nextRotor:turn()
+    end
+
+    local leftStr = string.right( self.alphabet, #self.alphabet - 1 )
+    self.alphabet = leftStr .. self.alphabet[1]
+
+    local rightStr = string.right( self.wiring, #self.wiring - 1 )
+    self.wiring = rightStr .. self.wiring[1]
+end
+
+function Rotor:rotateToLetter( char ) -- Rotates to where char is #1
+    if string.find( self.alphabet, char ) then
+        while ( self.alphabet[1] ~= char ) do
+            self:turn()
+        end
+    end
+end
+
+function Rotor:map( char, direction )
+    if direction == "left" then -- left to right (alphabet to 'wiring')
+        local letter = self.alphabet[char]
+        --print( "Rotor input Letter: "..letter )
+        local a = string.find( self.alphabet, letter )
+        --print( "Rotor output Letter: "..self.wiring[a] )
+        return string.find( self.alphabet, self.wiring[a] )
+    elseif direction == "right" then -- right to left ('wiring' to alphabet)
+        local letter = self.alphabet[char]
+        --print( "Rotor input Letter: "..letter )
+        local a = string.find( self.wiring, letter )
+        --print( "Rotor output Letter: "..self.alphabet[a] )
+        return string.find( self.alphabet, self.alphabet[a] )
+    end
+end
+
+function Rotor:setNextRotor( rotor )
+    self.nextRotor = rotor
+end
+
+function Rotor:input( signal, direction )
+    if type( signal ) ~= "number" then
+        signal = string.find( self.key, signal )
+    end
+
+    return self:map( signal, direction )
+end
+
+return Rotor

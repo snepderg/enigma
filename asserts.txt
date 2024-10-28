@@ -1,0 +1,65 @@
+--@name Enigma Test
+--@author Snepderg
+
+--@client
+
+--@include enigma_chat/rotor.txt
+--@include enigma_chat/plugboard.txt
+--@include enigma_chat/reflector.txt
+
+-- This script tests the Enigma machine stepping to identify any potential errors.
+
+local Rotor = require( "enigma_chat/rotor.txt" )
+local Plugboard = require( "enigma_chat/plugboard.txt" )
+local Reflector = require( "enigma_chat/reflector.txt" )
+
+local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+local rotorI = Rotor:new( "EKMFLGDQVZNTOWYHXUSPAIBRCJ", { "Q" } )
+local rotorII = Rotor:new( "AJDKSIRUXBLHWTMCQGZNPYFVOE", { "E" } )
+local rotorIII = Rotor:new( "BDFHJLCPRTXVZNYEIWGAKMUSQO", { "V" } )
+
+rotorI:setNextRotor( rotorII )
+rotorII:setNextRotor( rotorIII )
+
+local reflector = Reflector:new( "YRUHQSLDPXNGOKMIEBFZCWVJAT" )
+
+local plugboard = Plugboard:new( { "AR", "GK", "OX" } )
+
+local function setEnigmaKey( key )
+    local args = string.split( key, "" )
+    rotorI:rotateToLetter( args[1] )
+    rotorII:rotateToLetter( args[2] )
+    rotorIII:rotateToLetter( args[3] )
+end
+
+local function encipher( str )
+    strArgs = string.split( str, "" )
+
+    local newStr = ""
+
+    for _, str in pairs( strArgs ) do
+        rotorI:turn()
+
+        str = plugboard:input( str )
+        str = rotorI:input( str, "left" )
+        str = rotorII:input( str, "left" )
+        str = rotorIII:input( str, "left" )
+        str = reflector:input( str )
+        str = rotorIII:input( str, "right" )
+        str = rotorII:input( str, "right" )
+        str = rotorI:input( str, "right" )
+        str = plugboard:input( str )
+
+        newStr = newStr .. str
+    end
+
+    return newStr
+end
+
+--------------------------------
+local assertKey = "AAA"
+local assertStr = string.rep( "A", 36 )
+
+setEnigmaKey( assertKey )
+print( encipher( assertStr ) )

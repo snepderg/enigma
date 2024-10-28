@@ -1,0 +1,108 @@
+--@name Enigma
+--@author Snep, Superlamaface
+
+--@shared
+
+--@include lib/enigma/rotor.txt
+--@include lib/enigma/plugboard.txt
+--@include lib/enigma/reflector.txt
+
+local Rotor_Import = require( "lib/enigma/rotor.txt" )
+local Plugboard_Import = require( "lib/enigma/plugboard.txt" )
+local Reflector_Import = require( "lib/enigma/reflector.txt" )
+
+local Enigma = class( "Enigma" )
+
+function Enigma:initialize( rotors, reflectorWiring, plugboardPairs )
+    self.AllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    self.Rotors = {}
+    self.Plugboard = nil
+    self.Reflector = nil
+    --Defaults if not provided
+    rotors = rotors or {
+        { "EKMFLGDQVZNTOWYHXUSPAIBRCJ", { "Q" } }, -- Enigma I [I]
+        { "AJDKSIRUXBLHWTMCQGZNPYFVOE", { "E" } }, -- Enigma I [II]
+        { "BDFHJLCPRTXVZNYEIWGAKMUSQO", { "V" } } -- Enigma I [III]
+    }
+    reflectorWiring = reflectorWiring or "YRUHQSLDPXNGOKMIEBFZCWVJAT"
+    plugboardPairs = plugboardPairs or { "AR", "GK", "OX" }
+    --Rotor Setup
+    for index, tbl in pairs( rotors ) do
+        local mapping = tbl[1]
+        local notches = tbl[2]
+
+        table.insert( self.Rotors, Rotor_Import:new( mapping, notches ) )
+    end
+    for index, rotor in pairs( self.Rotors ) do
+        if index + 1 <= #self.Rotors then
+            rotor:setNextRotor( self.Rotors[index + 1] )
+        end
+    end
+    --Setup Rest
+    self.Plugboard = Plugboard_Import:new( plugboardPairs )
+    self.Reflector = Reflector_Import:new( reflectorWiring )
+end
+
+--==Actively Configurable Values==--
+function Enigma:setKey( key )
+    if #key == #self.Rotors then
+        for index, rotor in pairs( self.Rotors ) do
+            rotor:rotateToLetter( key[index] )
+        end
+    end
+end
+
+function Enigma:setPlugboardPairs( plugPairs )
+    self.Plugboard:setPairs( plugPairs )
+end
+
+function Enigma:setRotorWiring( rotorNum, wiring )
+    if rotorNum >= 1 and rotorNum <= #self.Rotors then
+        self.Rotors[rotorNum]:setWiring( wiring )
+    end
+end
+
+function Enigma:setRotorNotches( rotorNum, notches )
+    if rotorNum >= 1 and rotorNum <= #self.Rotors then
+        self.Rotors[rotorNum]:setNotches( notches )
+    end
+end
+
+function Enigma:setReflectorWiring( wiring )
+    self.Reflector:setWiring( wiring )
+end
+
+--==Interface Code==--
+function Enigma:runMessage( message ) -- "Hello, World"
+    local strArgs = string.split( message, "" )
+
+    local outputStr = ""
+
+    for _, str in pairs( strArgs ) do
+        str = string.upper( str )
+
+        if string.find( self.AllowedChars, str ) then
+            self.Rotors[1]:turn()
+
+            str = self.Plugboard:input( str )
+
+            for i = 1, #self.Rotors do
+                str = self.Rotors[i]:input( str, "left" )
+            end
+
+            str = self.Reflector:input( str )
+
+            for i = #self.Rotors, 1, -1 do
+                str = self.Rotors[i]:input( str, "right" )
+            end
+
+            str = self.Plugboard:input( str )
+        end
+
+        outputStr = outputStr .. str
+    end
+
+    return outputStr
+end
+
+return Enigma

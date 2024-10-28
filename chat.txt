@@ -1,0 +1,183 @@
+--@name Enigma Chat
+--@author Snepderg, Superlamaface
+--@shared
+
+--@include lib/enigma/enigma.txt
+
+--[[
+-- This script utilizes the Enigma class to create a drop-in IRC within the server.
+-- It utilizes a technique known as 'convar hijacking' which enables message transmission via console commands
+-- instead of using the chat box.
+]]
+
+local Enigma_Import = require( "lib/enigma/enigma.txt" )
+
+--==Enigma Settings==--
+local rotors = {
+    { "EKMFLGDQVZNTOWYHXUSPAIBRCJ", { "Q" } }, -- Enigma I [I]
+    { "AJDKSIRUXBLHWTMCQGZNPYFVOE", { "E" } }, -- Enigma I [II]
+    { "BDFHJLCPRTXVZNYEIWGAKMUSQO", { "V" } } -- Enigma I [III]
+}
+local reflectorWiring = "YRUHQSLDPXNGOKMIEBFZCWVJAT" -- Reflector B
+local plugboardPairs = { "AR", "GK", "OX" }
+
+if SERVER then
+--==Serverside Start==--
+    --==Handshake==--
+    local validEnigmas = {}
+
+    local handshakeStr = ""
+    for i = 1, 64 do
+        handshakeStr = handshakeStr .. string.char( math.random( 1, 26 ) + 64 )
+    end
+
+    local handshake_Enigma = Enigma_Import:new( { { "XRIKPCTWMVHJQNZYOGAULDFBSE" } }, "JMXKUWBGNHVESQIYADFOZCRLPT", {} )
+    local expectedResponse = handshake_Enigma:runMessage( handshakeStr )
+
+    timer.create( "HandshakeDelay", 3, 1, function()
+        timer.remove("HandshakeDelay")
+        hook.runRemote( nil, { "HEnigmaS", handshakeStr } )
+    end )
+
+    hook.add( "OnEntityCreated", "runHandshake", function( ent )
+        if not isValid( ent ) then return end
+
+        if ent:getClass() == "starfall_processor" then
+            local timesRan = 0
+
+            local timerName = "runHandshakeDelay" .. tostring( ent )
+            timer.create( timerName, 1, 0, function()
+                if not isValid( ent ) then
+                    timer.remove( timerName )
+                    return
+                end
+
+                if ent:getColor() ~= Color( 255, 0, 0, 255 ) then -- lmao
+                    timer.remove( timerName )
+                    hook.runRemote( ent, { "HEnigmaS", handshakeStr } )
+                    return
+                end
+
+                timesRan = timesRan + 1
+                if timesRan >= 60 then
+                    timer.remove( timerName )
+                end
+            end )
+        end
+    end )
+
+    hook.add( "remote", "Callback", function( sender, ply, payload )
+        if sender == chip() then return end
+        if ply == owner() then return end
+
+        if type( payload ) ~= "table" then return end
+        if table.count( payload ) ~= 2 then return end
+
+        if type( payload[1] ) ~= "string" then return end
+        if type( payload[2] ) ~= "string" then return end
+
+        if payload[1] == "HEnigmaS" then
+            local encode_Enigma = Enigma_Import:new( { { "XRIKPCTWMVHJQNZYOGAULDFBSE" } }, "JMXKUWBGNHVESQIYADFOZCRLPT", {} )
+            local str = encode_Enigma:runMessage( payload[2] )
+
+            hook.runRemote( sender, { "HEnigmaR", str } )
+        elseif payload[1] == "HEnigmaR" then
+            if payload[2] == expectedResponse then
+                if table.hasValue( validEnigmas,  sender ) then return end
+                table.insert( validEnigmas, sender )
+                print( "Found valid enigma: " .. tostring( sender ) )
+            end
+        end
+    end )
+
+    --==Keep Table Updated==--
+    timer.create( "Check Enigmas", 1, 0, function()
+        for index, value in pairs( validEnigmas ) do
+            if not isValid( value ) then
+                table.removeByValue( validEnigmas, value )
+            end
+        end
+    end)
+
+    --==Communication Between Chips==--
+    net.receive( "Send Message", function()
+        local tab = net.readTable()
+        for index, enigma in pairs( validEnigmas ) do
+            if isValid( enigma ) then
+                hook.runRemote( enigma, tab )
+            end
+        end
+    end )
+
+    hook.add( "remote", "MessageRecieve", function(sender, ply, payload)
+        if not table.hasValue( validEnigmas, sender ) then return end
+
+        if type( payload ) ~= "table" then return end
+        if table.count( payload ) ~= 2 then return end
+
+        if type( payload[1] ) ~= "string" then return end
+        if payload[1] ~= "Message" then return end
+
+        net.start( "Recieve Message" )
+        net.writeTable( payload[2] )
+        net.writeEntity( ply )
+        net.send( owner() )
+    end )
+--==Serverside End==--
+elseif CLIENT and player() == owner() then
+--==Clientside Start==--
+    --==Main Enigma==--
+    local mainEnigma = Enigma_Import:new( rotors, reflectorWiring, plugboardPairs )
+    local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    function ownMessage( input )
+        local key = ""
+        for index, rotor in pairs( rotors ) do
+            local setKey = alphabet[ math.random( 1, #alphabet ) ]
+            key = key .. setKey
+        end
+        mainEnigma:setKey( key )
+
+        local encryptedMsg = mainEnigma:runMessage( input )
+
+        net.start( "Send Message" )
+        net.writeTable( { "Message", { key, encryptedMsg } } )
+        net.send()
+    end
+
+    net.receive( "Recieve Message", function()
+        local msgPayload = net.readTable()
+        local sendingPly = net.readEntity()
+
+        local keyUsed = msgPayload[1]
+        local encryptedMsg = msgPayload[2]
+
+        if #keyUsed ~= #rotors then return end
+
+        mainEnigma:setKey( keyUsed )
+        local decryptedMsg = mainEnigma:runMessage( encryptedMsg )
+        othersMessage( sendingPly, decryptedMsg )
+    end )
+
+    --==Input==--
+    concmd( "muscle_material " .. "cable/rope" )
+
+    timer.create( "check", 0.1, 0, function()
+        local cvar = convar.getString("muscle_material")
+        if cvar == "cable/rope" then return end
+
+        if string.startWith( cvar, "$" ) then
+            cvar = string.right( cvar, #cvar - 1 )
+            cvar = string.upper( cvar )
+            ownMessage( cvar )
+            notification.addLegacy( owner():getName() .. " | " .. cvar, NOTIFY.HINT, 30 )
+        end
+        concmd( "muscle_material " .. "cable/rope" )
+    end )
+
+    --==Display==--
+    function othersMessage( ply, msg )
+        notification.addLegacy( ply:getName() .. " | " .. msg, NOTIFY.HINT, 30 )
+    end
+--==Clientside End==--
+end

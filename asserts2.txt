@@ -1,0 +1,38 @@
+--@name Enigma Test
+--@author Snepderg
+
+--@server
+
+--@include enigma_chat/enigma.txt
+
+--[[
+-- This script further tests the Enigma by ensuring that ciphertext with the same settings successfully reverts back
+-- to the plaintext.
+]]
+
+local Enigma_Import = require( "enigma_chat/enigma.txt" )
+
+local rotors = {
+    { "EKMFLGDQVZNTOWYHXUSPAIBRCJ", { "Q" } }, -- Enigma I [I]
+    { "AJDKSIRUXBLHWTMCQGZNPYFVOE", { "E" } }, -- Enigma I [II]
+    { "BDFHJLCPRTXVZNYEIWGAKMUSQO", { "V" } } -- Enigma I [III]
+}
+
+local reflectorWiring = "YRUHQSLDPXNGOKMIEBFZCWVJAT" -- Reflector B
+
+local plugboardPairs = { "AR", "GK", "OX" }
+
+local Enigma1 = Enigma_Import:new( rotors, reflectorWiring, plugboardPairs )
+local Enigma2 = Enigma_Import:new( rotors, reflectorWiring, plugboardPairs )
+
+local inputMsg = "Hello, World"
+
+local msg1 = Enigma1:runMessage( inputMsg )
+print( msg1 )
+
+local msg2 = Enigma2:runMessage( msg1 )
+print( msg2 )
+
+if string.upper( inputMsg ) ~= msg2 then
+    print( "Discrepancy between Enigma machines: Strings do not match!" )
+end
