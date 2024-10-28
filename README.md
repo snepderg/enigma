@@ -36,3 +36,4 @@ https://www.cryptomuseum.com/people/hamer/files/double_stepping.pdf
 1. Open the Spawnmenu by holding Q, navigate to the tools menu, search `Starfall - Processor` and select it.
 2. Close the Spawnmenu and place down the chip. Repeat for all users involved.
 3. Open the Developer Console (may need to be enabled in the Advanced Settings for Garry's Mod) and type `muscle_material("YOUR_MESSAGE_HERE")`
+- As stated above, if the settings are changed, please ensure that all parties have the same settings or they will not be able to decrypt your messages, and vice versa.
