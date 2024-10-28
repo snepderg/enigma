@@ -3,13 +3,13 @@
 
 --@shared
 
---@include lib/enigma/rotor.txt
---@include lib/enigma/plugboard.txt
---@include lib/enigma/reflector.txt
+--@include lib/rotor.txt
+--@include lib/plugboard.txt
+--@include lib/reflector.txt
 
-local Rotor_Import = require( "lib/enigma/rotor.txt" )
-local Plugboard_Import = require( "lib/enigma/plugboard.txt" )
-local Reflector_Import = require( "lib/enigma/reflector.txt" )
+local Rotor_Import = require( "lib/rotor.txt" )
+local Plugboard_Import = require( "lib/plugboard.txt" )
+local Reflector_Import = require( "lib/reflector.txt" )
 
 local Enigma = class( "Enigma" )
 

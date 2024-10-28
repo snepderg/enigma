@@ -2,7 +2,7 @@
 --@author Snepderg, Superlamaface
 --@shared
 
---@include lib/enigma/enigma.txt
+--@include lib/enigma.txt
 
 --[[
 -- This script utilizes the Enigma class to create a drop-in IRC within the server.
@@ -10,7 +10,7 @@
 -- instead of using the chat box.
 ]]
 
-local Enigma_Import = require( "lib/enigma/enigma.txt" )
+local Enigma_Import = require( "lib/enigma.txt" )
 
 --==Enigma Settings==--
 local rotors = {
